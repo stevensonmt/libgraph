@@ -918,22 +918,35 @@ defmodule Graph do
       ) do
     with v_id <- vertex_identifier.(v),
          true <- Map.has_key?(vs, v_id),
-         oe <- Map.delete(oe, v_id),
-         ie <- Map.delete(ie, v_id),
+         {outs, oe} <- Map.pop(oe, v_id),
+         {ins, ie} <- Map.pop(ie, v_id),
          vs <- Map.delete(vs, v_id),
          ls <- Map.delete(ls, v_id) do
-      {em, oe, ie} =
-        em
-        |> Enum.reduce({em, oe, ie}, fn
-          {{^v_id, id2} = k, _}, {e, o, i} ->
-            {Map.delete(e, k), o, Map.update!(i, id2, fn ns -> MapSet.delete(ns, v_id) end)}
+      {ie, em} =
+        case outs do
+          nil ->
+            {ie, em}
 
-          {{id1, ^v_id} = k, _}, {e, o, i} ->
-            {Map.delete(e, k), Map.update!(o, id1, fn ns -> MapSet.delete(ns, v_id) end), i}
+          _ ->
+            outs
+            |> Enum.reduce({ie, em}, fn id1, {i, e} ->
+              {Map.update!(i, id1, fn ns -> MapSet.delete(ns, v_id) end),
+               Map.delete(e, {v_id, id1})}
+            end)
+        end
 
-          _, acc ->
-            acc
-        end)
+      {oe, em} =
+        case ins do
+          nil ->
+            {oe, em}
+
+          _ ->
+            ins
+            |> Enum.reduce({oe, em}, fn id1, {o, e} ->
+              {Map.update!(o, id1, fn ns -> MapSet.delete(ns, v_id) end),
+               Map.delete(e, {id1, v_id})}
+            end)
+        end
 
       %__MODULE__{g | vertices: vs, vertex_labels: ls, out_edges: oe, in_edges: ie, edges: em}
     else
