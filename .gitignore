@@ -22,3 +22,6 @@ erl_crash.dump
 # QuickCheck files
 /.eqc-info
 /*.eqc
+
+# Ignore logs from lexical
+/.lexical
